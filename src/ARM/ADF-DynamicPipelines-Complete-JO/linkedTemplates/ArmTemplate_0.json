@@ -1,0 +1,378 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "ADF-DynamicPipelines-Complete-JO"
+        },
+        "LS_AzureKeyVault_properties_typeProperties_baseUrl": {
+            "type": "string",
+            "defaultValue": "https://KV-DynamicPipelines-JO.vault.azure.net/"
+        },
+        "LS_AzureBlobStorageParam_properties_typeProperties_connectionString_secretName": {
+            "type": "string",
+            "defaultValue": "@linkedService().secretName"
+        },
+        "LS_AzureBlobStorage_properties_typeProperties_connectionString_secretName": {
+            "type": "string",
+            "defaultValue": "Blob-Source"
+        },
+        "LS_AzureSQLDB_properties_typeProperties_connectionString_secretName": {
+            "type": "string",
+            "defaultValue": "@linkedService().secretName"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AzureKeyVault')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureKeyVault",
+                "typeProperties": {
+                    "baseUrl": "[parameters('LS_AzureKeyVault_properties_typeProperties_baseUrl')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AzureBlobStorageParam')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "AzureBlobStorage",
+                "annotations": [],
+                "parameters": {
+                    "secretName": {
+                        "type": "string",
+                        "defaultValue": "Blob-Source"
+                    }
+                },
+                "typeProperties": {
+                    "connectionString": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "LS_AzureKeyVault",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": "[parameters('LS_AzureBlobStorageParam_properties_typeProperties_connectionString_secretName')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureKeyVault')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AzureBlobStorage')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobStorage",
+                "typeProperties": {
+                    "connectionString": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "LS_AzureKeyVault",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": "[parameters('LS_AzureBlobStorage_properties_typeProperties_connectionString_secretName')]"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureKeyVault')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AzureSQLDB')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "parameters": {
+                    "secretName": {
+                        "type": "string",
+                        "defaultValue": "SQLServerDB-metadata"
+                    }
+                },
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "connectionString": {
+                        "type": "AzureKeyVaultSecret",
+                        "store": {
+                            "referenceName": "LS_AzureKeyVault",
+                            "type": "LinkedServiceReference"
+                        },
+                        "secretName": {
+                            "value": "[parameters('LS_AzureSQLDB_properties_typeProperties_connectionString_secretName')]",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureKeyVault')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_BlobCSV')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureBlobStorageParam",
+                    "type": "LinkedServiceReference",
+                    "parameters": {
+                        "secretName": {
+                            "value": "@dataset().secretname",
+                            "type": "Expression"
+                        }
+                    }
+                },
+                "parameters": {
+                    "container": {
+                        "type": "string",
+                        "defaultValue": "source"
+                    },
+                    "folderpath": {
+                        "type": "string",
+                        "defaultValue": "files"
+                    },
+                    "filename": {
+                        "type": "string",
+                        "defaultValue": "sourcefile1.csv"
+                    },
+                    "secretname": {
+                        "type": "string",
+                        "defaultValue": "Blob-Source"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": {
+                            "value": "@dataset().filename",
+                            "type": "Expression"
+                        },
+                        "folderPath": {
+                            "value": "@dataset().folderpath",
+                            "type": "Expression"
+                        },
+                        "container": {
+                            "value": "@dataset().container",
+                            "type": "Expression"
+                        }
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorageParam')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_AzSQLTable')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureSQLDB",
+                    "type": "LinkedServiceReference",
+                    "parameters": {
+                        "secretName": {
+                            "value": "@dataset().secretname",
+                            "type": "Expression"
+                        }
+                    }
+                },
+                "parameters": {
+                    "schema": {
+                        "type": "string",
+                        "defaultValue": "dbo"
+                    },
+                    "tablename": {
+                        "type": "string",
+                        "defaultValue": "ConfigADF"
+                    },
+                    "secretname": {
+                        "type": "string",
+                        "defaultValue": "SQLServerDB-metadata"
+                    }
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [],
+                "typeProperties": {
+                    "schema": {
+                        "value": "@dataset().schema",
+                        "type": "Expression"
+                    },
+                    "table": {
+                        "value": "@dataset().tablename",
+                        "type": "Expression"
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureSQLDB')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_Ingestion_Controller')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "LKP Get Driver Data",
+                        "type": "Lookup",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "7.00:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "AzureSqlSource",
+                                "queryTimeout": "02:00:00"
+                            },
+                            "dataset": {
+                                "referenceName": "DS_AzSQLTable",
+                                "type": "DatasetReference",
+                                "parameters": {
+                                    "schema": "dbo",
+                                    "tablename": "ConfigADF",
+                                    "secretname": "SQLServerDB-metadata"
+                                }
+                            },
+                            "firstRowOnly": false
+                        }
+                    },
+                    {
+                        "name": "FE File in Driver Data",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "LKP Get Driver Data",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('LKP Get Driver Data').output.value",
+                                "type": "Expression"
+                            },
+                            "activities": [
+                                {
+                                    "name": "CP Blob to SQL",
+                                    "type": "Copy",
+                                    "dependsOn": [],
+                                    "policy": {
+                                        "timeout": "7.00:00:00",
+                                        "retry": 0,
+                                        "retryIntervalInSeconds": 30,
+                                        "secureOutput": false,
+                                        "secureInput": false
+                                    },
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "source": {
+                                            "type": "DelimitedTextSource",
+                                            "storeSettings": {
+                                                "type": "AzureBlobStorageReadSettings",
+                                                "recursive": true
+                                            },
+                                            "formatSettings": {
+                                                "type": "DelimitedTextReadSettings"
+                                            }
+                                        },
+                                        "sink": {
+                                            "type": "AzureSqlSink",
+                                            "preCopyScript": {
+                                                "value": "DROP TABLE IF EXISTS @{item().destinationSchema}.@{item().destinationTable}",
+                                                "type": "Expression"
+                                            },
+                                            "tableOption": "autoCreate",
+                                            "disableMetricsCollection": false
+                                        },
+                                        "enableStaging": false
+                                    },
+                                    "inputs": [
+                                        {
+                                            "referenceName": "DS_BlobCSV",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "container": {
+                                                    "value": "@item().sourceContainer",
+                                                    "type": "Expression"
+                                                },
+                                                "folderpath": {
+                                                    "value": "@item().sourceFolderPath",
+                                                    "type": "Expression"
+                                                },
+                                                "filename": {
+                                                    "value": "@item().sourceFilename",
+                                                    "type": "Expression"
+                                                },
+                                                "secretname": {
+                                                    "value": "@item().sourceConnectionSecret",
+                                                    "type": "Expression"
+                                                }
+                                            }
+                                        }
+                                    ],
+                                    "outputs": [
+                                        {
+                                            "referenceName": "DS_AzSQLTable",
+                                            "type": "DatasetReference",
+                                            "parameters": {
+                                                "schema": {
+                                                    "value": "@item().destinationSchema",
+                                                    "type": "Expression"
+                                                },
+                                                "tablename": {
+                                                    "value": "@item().destinationTable",
+                                                    "type": "Expression"
+                                                },
+                                                "secretname": {
+                                                    "value": "@item().destinationConnectionSecret",
+                                                    "type": "Expression"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "annotations": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_AzSQLTable')]",
+                "[concat(variables('factoryId'), '/datasets/DS_BlobCSV')]"
+            ]
+        }
+    ]
+}

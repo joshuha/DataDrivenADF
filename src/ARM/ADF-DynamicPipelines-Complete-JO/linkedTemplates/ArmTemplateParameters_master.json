@@ -1,0 +1,27 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "value": "ADF-DynamicPipelines-Complete-JO"
+        },
+        "LS_AzureKeyVault_properties_typeProperties_baseUrl": {
+            "value": "https://KV-DynamicPipelines-JO.vault.azure.net/"
+        },
+        "LS_AzureBlobStorageParam_properties_typeProperties_connectionString_secretName": {
+            "value": "@linkedService().secretName"
+        },
+        "LS_AzureBlobStorage_properties_typeProperties_connectionString_secretName": {
+            "value": "Blob-Source"
+        },
+        "LS_AzureSQLDB_properties_typeProperties_connectionString_secretName": {
+            "value": "@linkedService().secretName"
+        },
+        "containerUri": {
+            "value": ""
+        },
+        "containerSasToken": {
+            "value": ""
+        }
+    }
+}
